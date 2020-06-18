@@ -8,22 +8,38 @@
 	switch ($a) {
 		case 'login':
 			$username=trim($_POST['username']);
+			$userpass=$_POST['userpass'];
+			
+			//sqli waf
+			$black_list = "/by|substr|benchmark|char|union|xor|\^|&|flag|substring|delete|drop|alter|change|rename|execute|prepare|deallocate|greatest|regexp|%00|;|=| |like|\'|rlike|-|ascii|mid|select|into|where|\\\|limit|or|and|if|extractvalue|updatexml|concat|insert|join|having|sleep/im";
+			//if(preg_match($black_list, $username)) die("<script>alert('非法字符');window.location.href='login.php';</script>");
+			//if(preg_match($black_list, $userpass)) die("<script>alert('非法字符');window.location.href='login.php';</script>");
+			
+			$white_list = "/^[A-Za-z0-9_\-]+$/im";
+			if(!preg_match($white_list, $username)) die("<script>alert('非法字符');window.location.href='login.php';</script>");
+			if(!preg_match($white_list, $username)) die("<script>alert('非法字符');window.location.href='login.php';</script>");
+			
+			
 			$userpass=md5($_POST['userpass']);
 
-			$sql="select * from user where username = '$username' and userpass = '$userpass'";
-			$result=mysqli_query($conn,$sql);
-			if (!$result) {
-				printf("Error: %s\n", mysqli_error());
+			$sql="select * from user where username = '$username'";
+			if ($conn) {
+			    $query = mysqli_query($conn,$sql);
+			    $result = mysqli_fetch_array($query);
+			}else{
+				printf("Error: %s\n", mysqli_error($conn));
 				exit();
 			}			
-			if(mysqli_num_rows($result)>0){
-				setcookie("username",$username);
-				setcookie("islogin",1);
-				echo "<script>alert('登录成功');window.location.href='index.php';</script>";
+			//重构了登录查询语句，将cookie换为session，提高了安全性
+			if(empty($result)||$result['userpass']!==$userpass){
+			    echo "<script>alert('用户名或密码错误，请重新登录');window.location.href='login.php';</script>";
 			}else{
-				echo "<script>alert('用户名或密码错误，请重新登录');window.location.href='login.php';</script>";
+				session_start();
+				$_SESSION['username'] = $username;
+				$_SESSION['islogin'] = "Leon";
+				mysqli_free_result($query);
+				echo "<script>alert('登录成功');window.location.href='index.php';</script>";
 			}
-
 			mysqli_close($conn);
 
 			break;
@@ -67,7 +83,7 @@
 					}else{
 						$sql="insert into user(username,userpass,create_time,imgpath) values('{$username}','{$userpass}','{$create_time}','{$imgpath}')";
 						mysqli_query($conn,$sql);
-						if(@mysql_affected_rows()>0){
+						if(@mysqli_affected_rows($conn)>0){
 							echo "<script>alert('注册成功，前往登录');window.location.href='login.php';</script>";
 						}else{
 							echo "<script>alert('注册失败，请重新注册');window.location.href='register.php';</script>";
@@ -85,21 +101,23 @@
 			break;
 
 		case 'quit':
-			if($_COOKIE['islogin']=1){
-				setcookie("islogin",null);
-				header("location:index.php");
-			}
+		    session_start();
+			session_destroy();
+			header("location:index.php");
 
 			break;
 
 		case 'message':
-			$message_name=$_COOKIE['username'];//留言用户名
+		    session_start();
+			$message_name=$_SESSION['username'];//留言用户名
 			$sql_id="select id from user where username='{$message_name}'";
 			$result=mysqli_query($conn,$sql_id);
 
 			$ID=mysqli_fetch_assoc($result);
 			foreach($ID as $id){}//获取留言用户id
 			$message_content=$_POST['message_content'];//留言内容
+			//xss waf
+			
 			$create_time=date("Y-m-d H:i:s",time());//留言时间
 
 			$sql="insert into message(message_content,create_time,id,message_name) values('{$message_content}','{$create_time}',{$id},'{$message_name}')";
@@ -130,12 +148,13 @@
 
 		case 'reply':
 			$reply_content=$_POST['reply_content'];
+			//xss waf
 
 			$create_time=date("Y-m-d H:i:s",time());
 
 			$message_id=$_GET['message_id'];
-
-			$reply_name=$_COOKIE['username'];
+			session_start();
+			$reply_name=$_SESSION['username'];
 
 			$sql_mname="select message_name from message where message_id=".$message_id;
 			$result_mname=mysqli_query($conn,$sql_mname);
@@ -175,23 +194,28 @@
 			break;
 
 		case 'updateuser':
-			$username_cookie=$_COOKIE['username'];
+		    session_start();
+			$username_cookie=$_SESSION['username'];
 			$username=trim($_POST['username']);
 			$userpass=$_POST['userpass'];
 			$reuserpass=$_POST['reuserpass'];
 			$sql_user="select * from user where username = '{$username}'";
-			$result=mysqli_query($conn,$sql_user);
+			if(isset($username)&&isset($userpass)){
+			    $result=mysqli_query($conn,$sql_user);
+			}else{
+			    die("<script>alert('错误');window.location.href='editinfo.php';</script>");
+			}
 			$row=mysqli_fetch_assoc($result);
 
 			if(empty($userpass)){
 				echo "<script>alert('密码不能为空，请输入原始密码或重置密码');window.location.href='editinfo.php';</script>";
 			}
 
-			if($userpass!=$reuserpass){
+			if($userpass!==$reuserpass){
 				echo "<script>alert('两次密码不一致');window.location.href='editinfo.php';</script>";
 			}
 
-			if($username==$username_cookie){
+			if($username===$username_cookie){
 				$userpass=md5($userpass);
 				$sql="update user set username='{$username}',userpass='{$userpass}' where username='{$username_cookie}'";
 				mysqli_query($conn,$sql);	
@@ -212,7 +236,7 @@
 					if(mysqli_affected_rows($conn)>0){
 						setcookie("username",null);
 						setcookie("username",$username);
-						echo "<script>alert('修改成功');window.location.href='index.php';</script>";
+						echo "<script>alert('修改成功,请重新登录');window.location.href='action.php?a=quit';</script>";
 					}else{
 						echo "<script>alert('密码未修改');window.location.href='index.php';</script>";
 					}
@@ -224,7 +248,8 @@
 
 			break;
 		case 'updateinfo':
-			$username_cookie=$_COOKIE['username'];
+		    session_start();
+			$username_cookie=$_SESSION['username'];
 			$myfile=$_FILES['imgpath'];
 			//设置上传图片大小
 			if($myfile['size']>2*1024*1024){

@@ -1,10 +1,11 @@
 <?php
-	if($_COOKIE['islogin']!=1){
+	session_start();
+	if ($_SESSION['islogin'] !== "Leon") {
 		header("location:login.php");
 	}
 
 	require("connect.php");
-	$username=$_COOKIE['username'];
+	$username=$_SESSION['username'];
 	$sql_img="select * from user where username='{$username}'";
 	$result_img=mysqli_query($conn,$sql_img);
 	$row_img=mysqli_fetch_assoc($result_img);
