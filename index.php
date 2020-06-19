@@ -34,7 +34,7 @@
 	</style>
 </head>
 <body>
-	<div align="right" style="padding:10px 50px;background:#81A849;">
+	<div align="right" style="padding:10px 50px;background:#00BFFF;">
 		<h6 style="height:60px;line-height:60px;color:#fff;">欢迎&nbsp;&nbsp;<a href="info.php" target="_blank"><img src="<?php echo $imgpath; ?>" alt="头像" width="60" height="60" class="img-circle"/></a>&nbsp;&nbsp;<a href="info.php" target="_blank" style="color:#fff;"><?php echo $username; ?></a>&nbsp;登录留言板<span>&nbsp;&nbsp;&nbsp;<a href="action.php?a=quit" style="color:#fff;">退出登录</a></span></h6>
 	</div>
 	<div class="container">

@@ -2,7 +2,8 @@
 	header("content-type:text/html;charset=utf-8");
 
 	require("connect.php");
-
+	require("antixss.php");
+	
 	$a=$_GET['a'];
 
 	switch ($a) {
@@ -11,13 +12,13 @@
 			$userpass=$_POST['userpass'];
 			
 			//sqli waf
-			$black_list = "/by|substr|benchmark|char|union|xor|\^|&|flag|substring|delete|drop|alter|change|rename|execute|prepare|deallocate|greatest|regexp|%00|;|=| |like|\'|rlike|-|ascii|mid|select|into|where|\\\|limit|or|and|if|extractvalue|updatexml|concat|insert|join|having|sleep/im";
+			$black_list = "/by|substr|benchmark|char|union|xor|\^|&|flag|substring|delete|drop|alter|change|rename|execute|prepare|deallocate|greatest|*|regexp|%00|;|=| |like|\'|rlike|-|ascii|mid|select|into|where|\\\|limit|or|and|if|extractvalue|updatexml|concat|insert|join|having|sleep/im";
 			//if(preg_match($black_list, $username)) die("<script>alert('非法字符');window.location.href='login.php';</script>");
 			//if(preg_match($black_list, $userpass)) die("<script>alert('非法字符');window.location.href='login.php';</script>");
 			
 			$white_list = "/^[A-Za-z0-9_\-]+$/im";
 			if(!preg_match($white_list, $username)) die("<script>alert('非法字符');window.location.href='login.php';</script>");
-			if(!preg_match($white_list, $username)) die("<script>alert('非法字符');window.location.href='login.php';</script>");
+			if(!preg_match($white_list, $userpass)) die("<script>alert('非法字符');window.location.href='login.php';</script>");
 			
 			
 			$userpass=md5($_POST['userpass']);
@@ -66,7 +67,13 @@
 			}
 			if(move_uploaded_file($myfile['tmp_name'],"img/".$name)){
 				$username=trim($_POST['username']);
-				$userpass=md5($_POST['userpass']);
+				$userpass=$_POST['userpass'];
+				//sql waf
+				$white_list = "/^[A-Za-z0-9_\-]+$/im";
+				if(!preg_match($white_list, $username)) die("<script>alert('非法字符');window.location.href='register.php';</script>");
+				if(!preg_match($white_list, $userpass)) die("<script>alert('非法字符');window.location.href='register.php';</script>");
+				$userpass=md5($userpass);
+				
 				$confirm_pass=md5($_POST['confirm_pass']);
 				$imgpath=$name;
 				$create_time=time();
@@ -116,7 +123,8 @@
 			$ID=mysqli_fetch_assoc($result);
 			foreach($ID as $id){}//获取留言用户id
 			$message_content=$_POST['message_content'];//留言内容
-			//xss waf
+			
+			$message_content = antixss($message_content);//xss waf
 			
 			$create_time=date("Y-m-d H:i:s",time());//留言时间
 
@@ -148,7 +156,8 @@
 
 		case 'reply':
 			$reply_content=$_POST['reply_content'];
-			//xss waf
+			
+			$reply_content = antixss($reply_content);//xss waf
 
 			$create_time=date("Y-m-d H:i:s",time());
 
@@ -199,6 +208,11 @@
 			$username=trim($_POST['username']);
 			$userpass=$_POST['userpass'];
 			$reuserpass=$_POST['reuserpass'];
+			//sql waf
+			$white_list = "/^[A-Za-z0-9_\-]+$/im";
+			if(!preg_match($white_list, $username)) die("<script>alert('非法字符');window.location.href='register.php';</script>");
+			if(!preg_match($white_list, $userpass)) die("<script>alert('非法字符');window.location.href='register.php';</script>");
+			
 			$sql_user="select * from user where username = '{$username}'";
 			if(isset($username)&&isset($userpass)){
 			    $result=mysqli_query($conn,$sql_user);
